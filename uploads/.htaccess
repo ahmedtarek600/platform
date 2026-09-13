@@ -1,0 +1,26 @@
+# =============================================
+# منع تنفيذ أي كود PHP أو سكريبتات داخل مجلد الملفات المرفوعة
+# (نسخة مدموجة: نفس فكرة الملف الأصلي + توافق كامل مع Apache 2.4)
+# =============================================
+
+Options -Indexes
+
+# الطريقة الرسمية في Apache 2.4 (الأضمن على نسختك الحالية)
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|pl|py|jsp|asp|sh|cgi|exe)$">
+    Require all denied
+</FilesMatch>
+
+# نفس فكرة الملف الأصلي (Apache 2.2 syntax) — نسيبها كطبقة حماية إضافية
+# تشتغل تلقائيًا لو عندك mod_access_compat مفعّل (الوضع الافتراضي في XAMPP)
+<FilesMatch "\.php$">
+  Order allow,deny
+  Deny from all
+</FilesMatch>
+
+# تعطيل تفسير PHP نهائيًا كطبقة حماية ثالثة احتياطية
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>

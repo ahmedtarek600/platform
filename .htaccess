@@ -1,0 +1,21 @@
+Options -Indexes
+
+# Prevent direct access to config and auth folders
+<FilesMatch "\.(php)$">
+  # Allow PHP to run normally
+</FilesMatch>
+
+# Protect config folder
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Block direct access to config
+  RewriteRule ^config/ - [F,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set X-XSS-Protection "1; mode=block"
+</IfModule>
