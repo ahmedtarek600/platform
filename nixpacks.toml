@@ -1,5 +1,8 @@
-[providers]
-providers = ["php"]
+[phases.setup]
+nixPkgs = ["php", "php82Extensions.pdo_mysql", "composer"]
 
-[variables]
-NIXPACKS_PHP_ROOT_DIR = "."
+[phases.build]
+cmds = ["echo 'Building PHP app'"]
+
+[start]
+cmd = "php -S 0.0.0.0:$PORT -t ."
