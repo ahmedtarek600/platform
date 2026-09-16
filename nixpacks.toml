@@ -1,8 +1,2 @@
-[phases.setup]
-nixPkgs = ["php", "php82Extensions.pdo_pgsql", "php82Extensions.pgsql", "composer"]
-
-[phases.build]
-cmds = ["echo 'Building PHP app'"]
-
-[start]
-cmd = "php -S 0.0.0.0:$PORT -t ."
+[providers]
+providers = ["php"]
