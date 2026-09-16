@@ -18,7 +18,7 @@ $canChooseGrade = in_array($_SESSION['user_role'], ['admin', 'doctor'], true);
 if ($canChooseGrade && isset($_GET['grade'])) {
     $grade = (int) $_GET['grade'];
 } else {
-    $grade = (int) $_SESSION['user_grade'];
+    $grade = (int) ($_SESSION['user_grade'] ?? 0);
 }
 
 if ($grade < 1 || $grade > 4) {
@@ -35,19 +35,37 @@ if (isset($_GET['semester'])) {
     }
 }
 
-// تحديد اسم المادة حسب اللغة المختارة (name_en لو موجود ومتاح، وإلا name العربي دايمًا كـ fallback)
+// تحديد اسم المادة حسب اللغة المختارة بطريقة آمنة ومتوافقة مع PostgreSQL
 $lang = $_COOKIE['site_lang'] ?? 'ar';
-$nameColumn = ($lang === 'en') ? 'COALESCE(NULLIF(name_en, ""), name)' : 'name';
+$nameColumn = ($lang === 'en') ? "COALESCE(NULLIF(name_en, ''), name)" : "name";
 
-$pdo = getDB();
+try {
+    $pdo = getDB();
 
-if ($semester !== null) {
-    $stmt = $pdo->prepare("SELECT id, {$nameColumn} AS name FROM subjects WHERE grade = ? AND semester = ? ORDER BY id");
-    $stmt->execute([$grade, $semester]);
-} else {
-    $stmt = $pdo->prepare("SELECT id, {$nameColumn} AS name FROM subjects WHERE grade = ? ORDER BY id");
-    $stmt->execute([$grade]);
+    if ($semester !== null) {
+        $stmt = $pdo->prepare("SELECT id, {$nameColumn} AS name FROM subjects WHERE grade = ? AND semester = ? ORDER BY id");
+        $stmt->execute([$grade, $semester]);
+    } else {
+        $stmt = $pdo->prepare("SELECT id, {$nameColumn} AS name FROM subjects WHERE grade = ? ORDER BY id");
+        $stmt->execute([$grade]);
+    }
+    $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    echo json_encode(['success' => true, 'subjects' => $subjects, 'grade' => $grade]);
+} catch (PDOException $e) {
+    // في حالة عدم وجود عمود name_en، يتم التراجع لاستخدام name فقط
+    if ($lang === 'en') {
+        if ($semester !== null) {
+            $stmt = $pdo->prepare("SELECT id, name FROM subjects WHERE grade = ? AND semester = ? ORDER BY id");
+            $stmt->execute([$grade, $semester]);
+        } else {
+            $stmt = $pdo->prepare("SELECT id, name FROM subjects WHERE grade = ? ORDER BY id");
+            $stmt->execute([$grade]);
+        }
+        $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(['success' => true, 'subjects' => $subjects, 'grade' => $grade]);
+    } else {
+        http_response_code(500);
+        echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
+    }
 }
-$subjects = $stmt->fetchAll();
-
-echo json_encode(['success' => true, 'subjects' => $subjects, 'grade' => $grade]);
