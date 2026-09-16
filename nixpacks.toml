@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["php", "php82Extensions.pdo_mysql", "composer"]
+nixPkgs = ["php", "php82Extensions.pdo_pgsql", "php82Extensions.pgsql", "composer"]
 
 [phases.build]
 cmds = ["echo 'Building PHP app'"]
