@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// api/start_exam.php – بدء جلسة الامتحان
+// api/start_exam.php – بدء جلسة الامتحان (PostgreSQL & MySQL Compatible)
 // =============================================
 require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -31,8 +31,8 @@ if (!$examId) {
 $pdo = getDB();
 
 try {
-    // جلب بيانات الامتحان
-    $stmt = $pdo->prepare("SELECT * FROM exams WHERE id = ? AND is_active = 1");
+    // جلب بيانات الامتحان مع دعم نوع Boolean لـ PostgreSQL
+    $stmt = $pdo->prepare("SELECT * FROM exams WHERE id = ? AND (is_active = TRUE OR is_active::text = '1')");
     $stmt->execute([$examId]);
     $exam = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -41,7 +41,7 @@ try {
         exit;
     }
 
-    // التحقق من أن اليوزر لم يأدِ الامتحان قبل كده (allow_once)
+    // التحقق من أن اليوزر لم يؤدِّ الامتحان من قبل (allow_once)
     if (!empty($exam['allow_once'])) {
         $stmt = $pdo->prepare("SELECT id, status FROM exam_sessions WHERE exam_id = ? AND user_id = ?");
         $stmt->execute([$examId, $userId]);
@@ -56,7 +56,7 @@ try {
                 echo json_encode(['success' => false, 'message' => 'لقد أديت هذا الامتحان من قبل ولا يمكن تكراره']);
                 exit;
             }
-            // جلسة في التقدم - استكمال
+            // جلسة جارية - استكمال
             $sessionId = $existing['id'];
         } else {
             $sessionId = null;
@@ -65,7 +65,7 @@ try {
         $sessionId = null;
     }
 
-    // إنشاء جلسة جديدة لو مفيش
+    // إنشاء جلسة جديدة في حال عدم وجود جلسة جارية
     if (!$sessionId) {
         $stmt = $pdo->prepare("
             INSERT INTO exam_sessions (exam_id, user_id, ip_address)
