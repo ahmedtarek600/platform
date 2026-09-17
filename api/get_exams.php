@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// api/get_exams.php – جلب قائمة الامتحانات
+// api/get_exams.php – جلب قائمة الامتحانات (PostgreSQL & MySQL Compatible)
 // =============================================
 require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -19,24 +19,21 @@ $userId   = (int)$_SESSION['user_id'];
 $grade    = isset($_GET['grade']) ? (int)$_GET['grade'] : (int)($_SESSION['user_grade'] ?? $_SESSION['grade'] ?? 1);
 
 try {
-    // جلب الامتحانات مع معلومات إضافية
+    // بناء استعلام متوافق مع PostgreSQL و MySQL بدون استخدام دوان غير معرفة
     $sql = "
         SELECT e.*,
                s.name AS subject_name,
                u.name AS creator_name,
-               (SELECT COUNT(*) FROM exam_sessions es WHERE es.exam_id = e.id AND es.user_id = ?) AS user_attempted,
-               (SELECT es.status FROM exam_sessions es WHERE es.exam_id = e.id AND es.user_id = ? LIMIT 1) AS user_status,
+               (SELECT COUNT(*) FROM exam_sessions es WHERE es.exam_id = e.id AND es.user_id = :user_id1) AS user_attempted,
+               (SELECT es.status FROM exam_sessions es WHERE es.exam_id = e.id AND es.user_id = :user_id2 LIMIT 1) AS user_status,
                (SELECT COUNT(*) FROM exam_sessions es2 WHERE es2.exam_id = e.id AND es2.status = 'submitted') AS submissions_count
         FROM exams e
         JOIN subjects s ON s.id = e.subject_id
         JOIN users u    ON u.id = e.created_by
-        WHERE e.grade = ?
+        WHERE e.grade = :grade
     ";
 
-    $params = [$userId, $userId, $grade];
-
-    // الأدمن يشوف كل الامتحانات، اليوزر يشوف المفعّلة فقط
-    // تم التعديل ليتوافق مع PostgreSQL Boolean و TINYINT معاً
+    // الأدمن يرى كافة الامتحانات، الطالب يرى المفعّلة فقط (مع دعم PostgreSQL Boolean)
     if (!$isAdmin) {
         $sql .= " AND (e.is_active = TRUE OR e.is_active = 1)";
     }
@@ -44,10 +41,14 @@ try {
     $sql .= " ORDER BY e.created_at DESC";
 
     $stmt = $pdo->prepare($sql);
-    $stmt->execute($params);
+    $stmt->bindValue(':user_id1', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':user_id2', $userId, PDO::PARAM_INT);
+    $stmt->bindValue(':grade', $grade, PDO::PARAM_INT);
+    $stmt->execute();
+
     $exams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // تحويل القيم لترتيب البيانات المرجعة للـ Frontend
+    // تحويل أنواع القيم لتجهيزها للـ Frontend
     foreach ($exams as &$exam) {
         $exam['user_attempted']    = (int)($exam['user_attempted'] ?? 0);
         $exam['submissions_count'] = (int)($exam['submissions_count'] ?? 0);
@@ -56,9 +57,9 @@ try {
     echo json_encode(['success' => true, 'exams' => $exams]);
 
 } catch (Exception $e) {
-    // إرجاع تفاصيل الخطأ للتشخيص بدقة أثناء التطوير
+    http_response_code(500);
     echo json_encode([
-        'success' => false, 
+        'success' => false,
         'message' => 'خطأ في جلب الامتحانات',
         'error'   => $e->getMessage()
     ]);
