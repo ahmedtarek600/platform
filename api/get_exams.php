@@ -1,6 +1,6 @@
 <?php
 // =============================================
-// api/get_exams.php – جلب قائمة الامتحانات (PostgreSQL & MySQL Compatible)
+// api/get_exams.php – جلب قائمة الامتحانات
 // =============================================
 require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
@@ -19,7 +19,6 @@ $userId   = (int)$_SESSION['user_id'];
 $grade    = isset($_GET['grade']) ? (int)$_GET['grade'] : (int)($_SESSION['user_grade'] ?? $_SESSION['grade'] ?? 1);
 
 try {
-    // بناء استعلام متوافق مع PostgreSQL و MySQL بدون استخدام دوان غير معرفة
     $sql = "
         SELECT e.*,
                s.name AS subject_name,
@@ -33,9 +32,8 @@ try {
         WHERE e.grade = :grade
     ";
 
-    // الأدمن يرى كافة الامتحانات، الطالب يرى المفعّلة فقط (مع دعم PostgreSQL Boolean)
     if (!$isAdmin) {
-        $sql .= " AND (e.is_active = TRUE OR e.is_active = 1)";
+        $sql .= " AND (e.is_active = TRUE OR e.is_active::text = '1')";
     }
 
     $sql .= " ORDER BY e.created_at DESC";
@@ -48,7 +46,6 @@ try {
 
     $exams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // تحويل أنواع القيم لتجهيزها للـ Frontend
     foreach ($exams as &$exam) {
         $exam['user_attempted']    = (int)($exam['user_attempted'] ?? 0);
         $exam['submissions_count'] = (int)($exam['submissions_count'] ?? 0);
