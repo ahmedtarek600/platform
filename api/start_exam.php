@@ -2,7 +2,7 @@
 // =============================================
 // api/start_exam.php – بدء جلسة الامتحان
 // =============================================
-session_start();
+require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/db.php';
@@ -14,6 +14,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'طريقة الطلب غير صحيحة']);
     exit;
 }
@@ -33,7 +34,7 @@ try {
     // جلب بيانات الامتحان
     $stmt = $pdo->prepare("SELECT * FROM exams WHERE id = ? AND is_active = 1");
     $stmt->execute([$examId]);
-    $exam = $stmt->fetch();
+    $exam = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$exam) {
         echo json_encode(['success' => false, 'message' => 'الامتحان غير موجود أو غير مفعّل']);
@@ -41,10 +42,10 @@ try {
     }
 
     // التحقق من أن اليوزر لم يأدِ الامتحان قبل كده (allow_once)
-    if ($exam['allow_once']) {
+    if (!empty($exam['allow_once'])) {
         $stmt = $pdo->prepare("SELECT id, status FROM exam_sessions WHERE exam_id = ? AND user_id = ?");
         $stmt->execute([$examId, $userId]);
-        $existing = $stmt->fetch();
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($existing) {
             if ($existing['status'] === 'banned') {
@@ -69,9 +70,10 @@ try {
         $stmt = $pdo->prepare("
             INSERT INTO exam_sessions (exam_id, user_id, ip_address)
             VALUES (?, ?, ?)
+            RETURNING id
         ");
         $stmt->execute([$examId, $userId, $_SERVER['REMOTE_ADDR'] ?? null]);
-        $sessionId = $pdo->lastInsertId();
+        $sessionId = $stmt->fetchColumn();
     }
 
     // جلب أسئلة الامتحان
@@ -82,7 +84,7 @@ try {
         ORDER BY order_num ASC
     ");
     $stmt->execute([$examId]);
-    $questions = $stmt->fetchAll();
+    $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // جلب الإجابات المحفوظة مسبقاً (auto-save)
     $stmt = $pdo->prepare("
@@ -92,24 +94,25 @@ try {
     ");
     $stmt->execute([$sessionId]);
     $savedAnswers = [];
-    foreach ($stmt->fetchAll() as $ans) {
+    foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $ans) {
         $savedAnswers[$ans['question_id']] = $ans;
     }
 
     // حساب الوقت المتبقي
     $stmt = $pdo->prepare("SELECT started_at FROM exam_sessions WHERE id = ?");
     $stmt->execute([$sessionId]);
-    $session = $stmt->fetch();
+    $session = $stmt->fetch(PDO::FETCH_ASSOC);
+    
     $elapsed = time() - strtotime($session['started_at']);
-    $totalSecs = $exam['duration_mins'] * 60;
+    $totalSecs = (int)$exam['duration_mins'] * 60;
     $remaining = max(0, $totalSecs - $elapsed);
 
     echo json_encode([
-        'success'      => true,
-        'session_id'   => $sessionId,
-        'exam'         => $exam,
-        'questions'    => $questions,
-        'saved_answers'=> $savedAnswers,
+        'success'        => true,
+        'session_id'     => $sessionId,
+        'exam'           => $exam,
+        'questions'      => $questions,
+        'saved_answers'  => $savedAnswers,
         'time_remaining' => $remaining
     ]);
 

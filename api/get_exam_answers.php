@@ -2,12 +2,12 @@
 // =============================================
 // api/get_exam_answers.php – جلب إجابات طالب معين (أدمن)
 // =============================================
-session_start();
+require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/db.php';
 
-if (empty($_SESSION['user_id']) || $_SESSION['user_role'] !== 'admin') {
+if (empty($_SESSION['user_id']) || ($_SESSION['user_role'] ?? '') !== 'admin') {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'غير مصرح لك']);
     exit;
@@ -32,7 +32,7 @@ try {
         WHERE es.id = ?
     ");
     $stmt->execute([$sessionId]);
-    $session = $stmt->fetch();
+    $session = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$session) {
         echo json_encode(['success' => false, 'message' => 'الجلسة غير موجودة']);
@@ -58,12 +58,12 @@ try {
         ORDER BY eq.order_num ASC
     ");
     $stmt->execute([$sessionId, $session['exam_id']]);
-    $questions = $stmt->fetchAll();
+    $questions = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // جلب سجل الغش
     $stmt = $pdo->prepare("SELECT * FROM exam_cheat_log WHERE session_id = ? ORDER BY logged_at ASC");
     $stmt->execute([$sessionId]);
-    $cheatLog = $stmt->fetchAll();
+    $cheatLog = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode([
         'success'   => true,

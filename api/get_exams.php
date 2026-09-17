@@ -2,7 +2,7 @@
 // =============================================
 // api/get_exams.php – جلب قائمة الامتحانات
 // =============================================
-session_start();
+require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/db.php';
@@ -14,9 +14,9 @@ if (empty($_SESSION['user_id'])) {
 }
 
 $pdo      = getDB();
-$isAdmin  = ($_SESSION['user_role'] === 'admin');
+$isAdmin  = (($_SESSION['user_role'] ?? '') === 'admin');
 $userId   = (int)$_SESSION['user_id'];
-$grade    = isset($_GET['grade']) ? (int)$_GET['grade'] : (int)($_SESSION['user_grade'] ?? 0);
+$grade    = isset($_GET['grade']) ? (int)$_GET['grade'] : (int)($_SESSION['user_grade'] ?? $_SESSION['grade'] ?? 1);
 
 try {
     // جلب الامتحانات مع معلومات إضافية
@@ -44,7 +44,7 @@ try {
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    $exams = $stmt->fetchAll();
+    $exams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     echo json_encode(['success' => true, 'exams' => $exams]);
 

@@ -2,7 +2,7 @@
 // =============================================
 // api/submit_exam.php – تسليم الامتحان
 // =============================================
-session_start();
+require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/db.php';
@@ -14,6 +14,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
     echo json_encode(['success' => false]);
     exit;
 }
@@ -33,14 +34,14 @@ try {
     // التحقق من الجلسة
     $stmt = $pdo->prepare("SELECT es.*, e.total_marks, e.title AS exam_title FROM exam_sessions es JOIN exams e ON e.id = es.exam_id WHERE es.id = ? AND es.user_id = ?");
     $stmt->execute([$sessionId, $userId]);
-    $session = $stmt->fetch();
+    $session = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$session) {
         echo json_encode(['success' => false, 'message' => 'الجلسة غير موجودة']);
         exit;
     }
 
-    if (in_array($session['status'], ['submitted', 'timed_out', 'banned'])) {
+    if (in_array($session['status'], ['submitted', 'timed_out', 'banned'], true)) {
         echo json_encode(['success' => false, 'message' => 'تم تسليم الامتحان مسبقاً']);
         exit;
     }
@@ -51,10 +52,11 @@ try {
     $stmt = $pdo->prepare("UPDATE exam_sessions SET status = 'submitted', submitted_at = NOW() WHERE id = ?");
     $stmt->execute([$sessionId]);
 
-    // إنشاء سجل النتيجة (مؤقتاً بدون درجة – الأدمن هيحطها)
+    // إنشاء سجل النتيجة (استخدام ON CONFLICT بدلاً من INSERT IGNORE)
     $stmt = $pdo->prepare("
-        INSERT IGNORE INTO exam_results (session_id, exam_id, user_id, total_marks, is_reviewed)
+        INSERT INTO exam_results (session_id, exam_id, user_id, total_marks, is_reviewed)
         VALUES (?, ?, ?, ?, 0)
+        ON CONFLICT (session_id) DO NOTHING
     ");
     $stmt->execute([$sessionId, $session['exam_id'], $userId, $session['total_marks']]);
 
@@ -67,6 +69,8 @@ try {
     ]);
 
 } catch (Exception $e) {
-    $pdo->rollBack();
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     echo json_encode(['success' => false, 'message' => 'خطأ في التسليم: ' . $e->getMessage()]);
 }

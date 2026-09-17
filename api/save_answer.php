@@ -2,7 +2,7 @@
 // =============================================
 // api/save_answer.php – حفظ إجابة (Auto-Save)
 // =============================================
-session_start();
+require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/db.php';
@@ -14,6 +14,7 @@ if (empty($_SESSION['user_id'])) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
     echo json_encode(['success' => false]);
     exit;
 }
@@ -36,25 +37,26 @@ try {
     // التحقق أن الجلسة تخص هذا المستخدم وما زالت in_progress
     $stmt = $pdo->prepare("SELECT id, status FROM exam_sessions WHERE id = ? AND user_id = ?");
     $stmt->execute([$sessionId, $userId]);
-    $session = $stmt->fetch();
+    $session = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$session || $session['status'] !== 'in_progress') {
         echo json_encode(['success' => false, 'message' => 'الجلسة منتهية']);
         exit;
     }
 
-    // حفظ أو تحديث الإجابة
+    $mcq   = in_array($answerMcq, ['a','b','c','d'], true) ? $answerMcq : null;
+    $essay = $answerEssay ? trim($answerEssay) : null;
+
+    // حفظ أو تحديث الإجابة باستخدام ON CONFLICT لـ PostgreSQL
     $stmt = $pdo->prepare("
         INSERT INTO exam_answers (session_id, question_id, answer_mcq, answer_essay)
         VALUES (?, ?, ?, ?)
-        ON DUPLICATE KEY UPDATE
-            answer_mcq   = VALUES(answer_mcq),
-            answer_essay = VALUES(answer_essay),
+        ON CONFLICT (session_id, question_id) 
+        DO UPDATE SET
+            answer_mcq   = EXCLUDED.answer_mcq,
+            answer_essay = EXCLUDED.answer_essay,
             saved_at     = CURRENT_TIMESTAMP
     ");
-
-    $mcq   = in_array($answerMcq, ['a','b','c','d']) ? $answerMcq : null;
-    $essay = $answerEssay ? trim($answerEssay) : null;
     $stmt->execute([$sessionId, $questionId, $mcq, $essay]);
 
     echo json_encode(['success' => true]);

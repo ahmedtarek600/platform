@@ -12,16 +12,17 @@ if (empty($_SESSION['user_id'])) {
     echo json_encode(['success' => false, 'message' => 'غير مصرح']);
     exit;
 }
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     echo json_encode(['success' => false, 'message' => 'Method Not Allowed']);
     exit;
 }
 
-$isAdmin   = ($_SESSION['user_role'] === 'admin');
-$isDoctor  = ($_SESSION['user_role'] === 'doctor');
+$isAdmin   = (($_SESSION['user_role'] ?? '') === 'admin');
+$isDoctor  = (($_SESSION['user_role'] ?? '') === 'doctor');
 $userId    = (int) $_SESSION['user_id'];
-$userGrade = (int) $_SESSION['user_grade'];
+$userGrade = (int) ($_SESSION['user_grade'] ?? $_SESSION['grade'] ?? 1);
 
 // الأدمن والدكتور يختاران الفرقة، أما الطالب فتُحدَّد الفرقة تلقائياً من الـ Session
 $canChooseGrade = ($isAdmin || $isDoctor);
@@ -32,7 +33,6 @@ if ($canChooseGrade && isset($_POST['grade'])) {
 }
 
 // للـ exam_schedule و schedule: تأكد أن الفرقة صحيحة ومُرسَلة دائماً
-// إذا الأدمن رفع بدون تحديد فرقة، استخدم فرقته الافتراضية
 if ($grade < 1 || $grade > 4) {
     $grade = $userGrade;
 }

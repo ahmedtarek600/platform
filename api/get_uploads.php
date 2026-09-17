@@ -13,9 +13,9 @@ if (empty($_SESSION['user_id'])) {
     exit;
 }
 
-$isAdmin   = ($_SESSION['user_role'] === 'admin');
-$isDoctor  = ($_SESSION['user_role'] === 'doctor');
-$userGrade = (int) $_SESSION['user_grade'];
+$isAdmin   = (($_SESSION['user_role'] ?? '') === 'admin');
+$isDoctor  = (($_SESSION['user_role'] ?? '') === 'doctor');
+$userGrade = (int) ($_SESSION['user_grade'] ?? $_SESSION['grade'] ?? 1);
 
 $subjectId     = isset($_GET['subject_id'])     ? (int) $_GET['subject_id']     : 0;
 $type          = trim($_GET['type']             ?? '');
@@ -48,7 +48,7 @@ $params = [$subjectId, $type, $grade];
 
 // الطالب يشوف الملفات المعتمدة بس. الأدمن والدكتور يشوفوا كل الحالات
 if (!$isAdmin && !$isDoctor) {
-    $sql .= ' AND u.status = "approved"';
+    $sql .= " AND u.status = 'approved'";
 }
 
 if ($sectionNumber !== null && $sectionNumber > 0) {
@@ -60,6 +60,6 @@ $sql .= ' ORDER BY u.created_at DESC';
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);
-$uploads = $stmt->fetchAll();
+$uploads = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 echo json_encode(['success' => true, 'uploads' => $uploads]);

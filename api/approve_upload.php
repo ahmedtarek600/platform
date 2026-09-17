@@ -13,11 +13,10 @@ if (empty($_SESSION['user_id'])) {
     exit;
 }
 
-$isAdmin  = ($_SESSION['user_role'] === 'admin');
-$isDoctor = ($_SESSION['user_role'] === 'doctor');
+$isAdmin  = (($_SESSION['user_role'] ?? '') === 'admin');
+$isDoctor = (($_SESSION['user_role'] ?? '') === 'doctor');
 $userId   = (int) $_SESSION['user_id'];
 
-// الموافقة/الرفض: للأدمن فقط. الحذف: للأدمن أو الدكتور (بشرط أن يكون رافع الملف)
 if (!$isAdmin && !$isDoctor) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'صلاحيات غير كافية']);
@@ -30,14 +29,13 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 $uploadId = (int) ($_POST['upload_id'] ?? 0);
-$action   = trim($_POST['action']      ?? ''); // 'approve' | 'reject' | 'delete'
+$action   = trim($_POST['action']      ?? '');
 
 if ($uploadId < 1 || !in_array($action, ['approve','reject','delete'], true)) {
     echo json_encode(['success' => false, 'message' => 'بيانات غير صالحة']);
     exit;
 }
 
-// الموافقة والرفض: للأدمن فقط، الدكتور ممنوع منهما
 if (($action === 'approve' || $action === 'reject') && !$isAdmin) {
     http_response_code(403);
     echo json_encode(['success' => false, 'message' => 'صلاحيات الأدمن فقط']);
@@ -46,18 +44,16 @@ if (($action === 'approve' || $action === 'reject') && !$isAdmin) {
 
 $pdo = getDB();
 
-// حذف الملف نهائياً
 if ($action === 'delete') {
     $stmt = $pdo->prepare('SELECT file_path, user_id FROM uploads WHERE id = ?');
     $stmt->execute([$uploadId]);
-    $row = $stmt->fetch();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$row) {
         echo json_encode(['success' => false, 'message' => 'الملف غير موجود']);
         exit;
     }
 
-    // الدكتور مسموح له بحذف ملفاته الخاصة فقط (وليس ملفات غيره)
     if ($isDoctor && !$isAdmin && (int) $row['user_id'] !== $userId) {
         http_response_code(403);
         echo json_encode(['success' => false, 'message' => 'يمكنك حذف الملفات التي رفعتها أنت فقط']);

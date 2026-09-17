@@ -2,7 +2,7 @@
 // =============================================
 // api/get_exam_submissions.php – جلب الامتحانات المسلّمة (أدمن + طالب)
 // =============================================
-session_start();
+require_once __DIR__ . '/../config/session.php';
 header('Content-Type: application/json; charset=utf-8');
 
 require_once __DIR__ . '/../config/db.php';
@@ -15,7 +15,7 @@ if (empty($_SESSION['user_id'])) {
 
 $pdo     = getDB();
 $userId  = (int)$_SESSION['user_id'];
-$isAdmin = ($_SESSION['user_role'] === 'admin');
+$isAdmin = (($_SESSION['user_role'] ?? '') === 'admin');
 
 try {
     if ($isAdmin) {
@@ -70,7 +70,7 @@ try {
         $stmt->execute([$userId]);
     }
 
-    $submissions = $stmt->fetchAll();
+    $submissions = $stmt->fetchAll(PDO::FETCH_ASSOC);
     echo json_encode(['success' => true, 'submissions' => $submissions]);
 
 } catch (Exception $e) {

@@ -25,8 +25,7 @@ if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
     exit;
 }
 
-// إعداد وإرسال البريد الإلكتروني
-$to      = 'support@scienceplatform.edu.eg'; // ← غيّر ده لإيميلك الفعلي لو مختلف
+$to      = 'support@scienceplatform.edu.eg';
 $subject = '=?UTF-8?B?' . base64_encode("رسالة جديدة من المنصة - $topic") . '?=';
 
 $body  = "الموضوع: $topic\n";
@@ -41,12 +40,5 @@ $headers .= "Reply-To: $email\r\n";
 $headers .= "Content-Type: text/plain; charset=UTF-8\r\n";
 
 $sent = @mail($to, $subject, $body, $headers);
-
-// حتى لو فشل الإرسال الفعلي (مثلاً على السيرفر المحلي)، لا نمنع المستخدم من إتمام العملية
-// يمكنك تفعيل الشرط أدناه إذا أردت إجبار نجاح الإرسال فعلياً قبل الرد بنجاح
-// if (!$sent) {
-//     echo json_encode(['success' => false, 'message' => 'تعذر إرسال الرسالة، حاول مرة أخرى لاحقاً']);
-//     exit;
-// }
 
 echo json_encode(['success' => true, 'message' => 'تم إرسال رسالتك بنجاح، سنرد عليك قريباً']);

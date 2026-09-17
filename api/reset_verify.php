@@ -21,7 +21,7 @@ $pdo  = getDB();
 $stmt = $pdo->prepare('SELECT id FROM users WHERE code = ? LIMIT 1');
 $stmt->execute([$code]);
 
-if (!$stmt->fetch()) {
+if (!$stmt->fetch(PDO::FETCH_ASSOC)) {
     echo json_encode(['success' => false, 'message' => 'الكود الجامعي غير موجود في النظام']);
     exit;
 }

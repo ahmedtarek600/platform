@@ -19,12 +19,12 @@ if ($code === '' || strlen($password) < 6) {
     exit;
 }
 
-$pdo  = getDB();
+$pdo = getDB();
 
 // التحقق من وجود المستخدم
 $stmt = $pdo->prepare('SELECT id FROM users WHERE code = ? LIMIT 1');
 $stmt->execute([$code]);
-$user = $stmt->fetch();
+$user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if (!$user) {
     echo json_encode(['success' => false, 'message' => 'الكود الجامعي غير موجود']);
