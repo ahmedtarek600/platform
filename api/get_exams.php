@@ -36,8 +36,9 @@ try {
     $params = [$userId, $userId, $grade];
 
     // الأدمن يشوف كل الامتحانات، اليوزر يشوف المفعّلة فقط
+    // تم التعديل ليتوافق مع PostgreSQL Boolean و TINYINT معاً
     if (!$isAdmin) {
-        $sql .= " AND e.is_active = 1";
+        $sql .= " AND (e.is_active = TRUE OR e.is_active = 1)";
     }
 
     $sql .= " ORDER BY e.created_at DESC";
@@ -46,8 +47,19 @@ try {
     $stmt->execute($params);
     $exams = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+    // تحويل القيم لترتيب البيانات المرجعة للـ Frontend
+    foreach ($exams as &$exam) {
+        $exam['user_attempted']    = (int)($exam['user_attempted'] ?? 0);
+        $exam['submissions_count'] = (int)($exam['submissions_count'] ?? 0);
+    }
+
     echo json_encode(['success' => true, 'exams' => $exams]);
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'خطأ في جلب الامتحانات']);
+    // إرجاع تفاصيل الخطأ للتشخيص بدقة أثناء التطوير
+    echo json_encode([
+        'success' => false, 
+        'message' => 'خطأ في جلب الامتحانات',
+        'error'   => $e->getMessage()
+    ]);
 }
