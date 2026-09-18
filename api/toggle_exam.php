@@ -31,12 +31,12 @@ if (!$examId || $isActive === null) {
 $pdo = getDB();
 
 try {
-    $stmt = $pdo->prepare("UPDATE exams SET is_active = ? WHERE id = ?");
-    $stmt->execute([$isActive ? 1 : 0, $examId]);
+    $stmt = $pdo->prepare("UPDATE exams SET is_active = ?::boolean WHERE id = ?");
+    $stmt->execute([$isActive ? 'true' : 'false', $examId]);
     echo json_encode([
         'success' => true,
         'message' => $isActive ? 'تم تفعيل الامتحان' : 'تم تعطيل الامتحان'
     ]);
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'خطأ في التحديث']);
+    echo json_encode(['success' => false, 'message' => 'خطأ في التحديث: ' . $e->getMessage()]);
 }

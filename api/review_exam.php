@@ -35,7 +35,7 @@ $pdo = getDB();
 try {
     $stmt = $pdo->prepare("
         UPDATE exam_results
-        SET obtained_marks = ?, is_reviewed = 1, reviewed_by = ?, reviewed_at = NOW(), notes = ?
+        SET obtained_marks = ?, is_reviewed = TRUE, reviewed_by = ?, reviewed_at = NOW(), notes = ?
         WHERE id = ?
     ");
     $stmt->execute([$obtainedMarks, $adminId, $notes ?: null, $resultId]);
@@ -43,5 +43,5 @@ try {
     echo json_encode(['success' => true, 'message' => 'تم حفظ الدرجة بنجاح']);
 
 } catch (Exception $e) {
-    echo json_encode(['success' => false, 'message' => 'خطأ في الحفظ']);
+    echo json_encode(['success' => false, 'message' => 'خطأ في الحفظ: ' . $e->getMessage()]);
 }
