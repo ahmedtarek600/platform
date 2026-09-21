@@ -111,13 +111,15 @@ const panelMap = {
 // وهي block-scoped في المتصفحات الحديثة، فمحتاجين نعرّضها للـ outer scope
 let _loadExamsScheduleFn = null;
 
+let _loadPendingFilesFn = null;
+
 function switchPanel(name) {
   document.querySelectorAll('.sidebar-link').forEach(l => l.classList.remove('active'));
   document.querySelector(`.sidebar-link[data-dash="${name}"]`)?.classList.add('active');
   document.querySelectorAll('.dash-panel').forEach(p => p.classList.remove('active'));
   const panel = document.getElementById(panelMap[name]);
   if (panel) panel.classList.add('active');
-  if (name === 'pending') loadPendingFiles();
+  if (name === 'pending' && _loadPendingFilesFn) _loadPendingFilesFn();
   if (name === 'exams' && _loadExamsScheduleFn) _loadExamsScheduleFn();
   if (name === 'exam_system') initExamSystem();
   if (name === 'profile') renderProfile();
@@ -536,6 +538,8 @@ if (app.isLoggedIn) {
       if (filesList) filesList.innerHTML = emptyState(F.noFilesTitle || 'لا يوجد ملفات', F.noFilesSub || 'لا يوجد محتوى في هذا القسم حتى الآن');
       return;
     }
+
+      _loadPendingFilesFn = loadPendingFiles;
 
     // عرض الملفات كـ Cards في منتصف الصفحة
     if (filesList) {
@@ -981,8 +985,13 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString(locale, { year:'numeric', month:'short', day:'numeric' });
 }
 function escHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 /* ============================================================
