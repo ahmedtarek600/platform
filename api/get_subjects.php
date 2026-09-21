@@ -25,20 +25,34 @@ if ($grade < 1 || $grade > 4) {
 }
 
 $semester = null;
-if (isset($_GET['semester']) && in_array((int)$_GET['semester'], [1, 2], true)) {
-    $semester = (int) $_GET['semester'];
+if (isset($_GET['semester']) && is_numeric($_GET['semester'])) {
+    $sem = (int)$_GET['semester'];
+    if (in_array($sem, [1, 2], true)) {
+        $semester = $sem;
+    }
 }
 
 try {
     $pdo = getDB();
 
-    // استعلام مباشر ومضمون التوافق لجميع قواعد البيانات
+    // استخدام Type Casting صريح لضمان التوافق مع أنواع العمود في PostgreSQL ( سواء كانت integer أو varchar )
     if ($semester !== null) {
-        $stmt = $pdo->prepare("SELECT id, name FROM subjects WHERE grade = ? AND semester = ? ORDER BY id");
-        $stmt->execute([$grade, $semester]);
+        $stmt = $pdo->prepare("
+            SELECT id, name 
+            FROM subjects 
+            WHERE (grade::text = ?::text) 
+              AND (semester::text = ?::text) 
+            ORDER BY id
+        ");
+        $stmt->execute([(string)$grade, (string)$semester]);
     } else {
-        $stmt = $pdo->prepare("SELECT id, name FROM subjects WHERE grade = ? ORDER BY id");
-        $stmt->execute([$grade]);
+        $stmt = $pdo->prepare("
+            SELECT id, name 
+            FROM subjects 
+            WHERE (grade::text = ?::text) 
+            ORDER BY id
+        ");
+        $stmt->execute([(string)$grade]);
     }
 
     $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -49,7 +63,7 @@ try {
         'grade'    => $grade
     ]);
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     http_response_code(500);
     echo json_encode([
         'success' => false,
